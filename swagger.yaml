@@ -1,0 +1,193 @@
+openapi: 3.0.0
+info:
+  title: UrbanSolv GIS API
+  description: API untuk mengelola data GIS menggunakan PostgreSQL + PostGIS.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Local Server
+
+paths:
+
+  /upload:
+    post:
+      summary: Upload Shapefile ZIP
+      description: >
+        Upload file .zip berisi shapefile (.shp, .dbf, .shx).  
+        Server akan mengekstrak, mengkonversi ke GeoJSON dan menyimpan seluruh fitur ke PostGIS.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File ZIP shapefile
+      responses:
+        '200':
+          description: Upload sukses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  count:
+                    type: integer
+
+  /features:
+    get:
+      summary: Ambil semua fitur GIS
+      description: Mengembalikan FeatureCollection GeoJSON untuk Leaflet/Mapbox/OpenLayers.
+      responses:
+        '200':
+          description: FeatureCollection berhasil dikembalikan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureCollection'
+
+    delete:
+      summary: Hapus semua fitur GIS
+      description: TRUNCATE tabel GeoFeatures dan reset auto-increment ID.
+      responses:
+        '200':
+          description: Semua fitur telah dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /features/{id}:
+    get:
+      summary: Ambil satu fitur berdasarkan ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Fitur ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+        '404':
+          description: Fitur tidak ditemukan
+
+    put:
+      summary: Update properties fitur
+      description: Hanya mengubah bagian properties dalam GeoFeature.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                properties:
+                  type: object
+                  example:
+                    NAMOBJ: "Nama Baru"
+                    REMARK: "Contoh remark"
+      responses:
+        '200':
+          description: Properties sukses diupdate
+        '404':
+          description: Fitur tidak ditemukan
+
+    delete:
+      summary: Hapus satu fitur berdasarkan ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Fitur berhasil dihapus
+        '404':
+          description: Fitur tidak ditemukan
+
+  /features/{id}/geometry:
+    put:
+      summary: Update geometry fitur
+      description: >
+        Update kolom GEOMETRY di PostGIS menggunakan GeoJSON melalui  
+        ST_GeomFromGeoJSON + ST_SetSRID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                geometry:
+                  $ref: '#/components/schemas/Geometry'
+      responses:
+        '200':
+          description: Geometry sukses diupdate
+        '404':
+          description: Fitur tidak ditemukan
+
+components:
+
+  schemas:
+
+    FeatureCollection:
+      type: object
+      properties:
+        type:
+          type: string
+          example: FeatureCollection
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+
+    Feature:
+      type: object
+      properties:
+        type:
+          type: string
+          example: Feature
+        properties:
+          type: object
+        geometry:
+          $ref: '#/components/schemas/Geometry'
+
+    Geometry:
+      type: object
+      properties:
+        type:
+          type: string
+          example: LineString
+        coordinates:
+          type: array
+          items:
+            type: array
+            items:
+              type: number

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Leaflet + PostGIS GeoJSON</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .tooltip-custom {
+            background: white;
+            border: 1px solid #aaa;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    // Inisialisasi Map
+    const map = L.map('map').setView([-7.97, 112.63], 12);
+
+    // Tambahkan OpenStreetMap layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Ambil data dari API backend
+    fetch("http://localhost:3000/features")
+        .then(response => response.json())
+        .then(data => {
+
+            const normalStyle = {
+                color: "red",
+                weight: 2
+            };
+
+            const highlightStyle = {
+                color: "yellow",
+                weight: 4
+            };
+
+            // Tambahkan layer GeoJSON
+            const geoLayer = L.geoJSON(data, {
+                style: normalStyle,
+                onEachFeature: function(feature, layer) {
+
+                    // fallback properties agar tidak error
+                    const props = feature.properties || {};
+                    const nama = props.NAMOBJ || "Tidak ada nama";
+                    const remark = props.REMARK || "-";
+
+                    // Tooltip (hover)
+                    layer.bindTooltip(
+                        `<div class="tooltip-custom"><b>${nama}</b></div>`,
+                        { sticky: true }
+                    );
+
+                    // Popup (klik)
+                    layer.bindPopup(`
+                        <b>Batas Wilayah:</b> ${nama}<br>
+                        <b>Keterangan:</b> ${remark}
+                    `);
+
+                    // Highlight effect
+                    layer.on("mouseover", () => layer.setStyle(highlightStyle));
+
+                    layer.on("mouseout", () => layer.setStyle(normalStyle));
+                }
+            }).addTo(map);
+
+            // Auto zoom ke seluruh layer
+            if (geoLayer.getLayers().length > 0) {
+                map.fitBounds(geoLayer.getBounds());
+            }
+        })
+        .catch(err => {
+            console.error("Gagal load GeoJSON:", err);
+        });
+</script>
+
+</body>
+</html>
