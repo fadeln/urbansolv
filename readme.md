@@ -1,6 +1,3 @@
-# **README.md (Short Version)**
-
-````markdown
 # UrbanSolv GIS API
 
 A lightweight GIS backend built with **Node.js**, **Express**, and **PostgreSQL + PostGIS**.  
